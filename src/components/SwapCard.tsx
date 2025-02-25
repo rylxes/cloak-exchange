@@ -1,12 +1,12 @@
-
 import React, { useState } from "react";
-import { ArrowDownUp } from "lucide-react";
+import { ArrowDownUp, History } from "lucide-react";
 import { generateStealthAddress, getPrivacyLevel } from "@/utils/privacyUtils";
 import { useToast } from "@/hooks/use-toast";
 import CryptoInput from "./swap/CryptoInput";
 import PrivacySettings from "./swap/PrivacySettings";
 import FeeBreakdown from "./swap/FeeBreakdown";
 import FeeTypeSelector from "./swap/FeeTypeSelector";
+import TransactionHistory, { Transaction } from "./swap/TransactionHistory";
 
 const cryptos = [
   { symbol: "BTC", name: "Bitcoin" },
@@ -34,6 +34,8 @@ const SwapCard = () => {
   const [isValidAddress, setIsValidAddress] = useState(true);
   const [stealthMode, setStealthMode] = useState(false);
   const [mixerCount, setMixerCount] = useState(3);
+  const [showHistory, setShowHistory] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { toast } = useToast();
 
   const calculateExchangeRate = (from: string, to: string, amount: string): string => {
@@ -73,23 +75,36 @@ const SwapCard = () => {
     const finalAddress = stealthMode ? generateStealthAddress(address) : address;
     const privacyLevel = getPrivacyLevel(Number(amount));
 
-    console.log("Swapping:", {
-      from: fromCrypto.symbol,
-      to: toCrypto.symbol,
+    const newTransaction: Transaction = {
+      id: crypto.randomUUID(),
+      fromCrypto: fromCrypto.symbol,
+      toCrypto: toCrypto.symbol,
       amount,
-      exchangeAmount,
-      fees,
+      estimatedReceived: exchangeAmount,
+      status: "pending",
+      timestamp: new Date(),
       address: finalAddress,
-      feeType,
-      stealthMode,
-      mixerCount,
-      privacyLevel,
-    });
+    };
+
+    setTransactions(prev => [newTransaction, ...prev]);
+
+    setTimeout(() => {
+      setTransactions(prev => 
+        prev.map(tx => 
+          tx.id === newTransaction.id 
+            ? { ...tx, status: Math.random() > 0.1 ? "completed" : "failed" }
+            : tx
+        )
+      );
+    }, 5000);
 
     toast({
       title: "Swap Initiated",
       description: `Transaction will be routed through ${mixerCount} mixer${mixerCount > 1 ? 's' : ''} for enhanced privacy.`,
     });
+
+    setAmount("");
+    setAddress("");
   };
 
   const estimatedAmount = calculateExchangeRate(fromCrypto.symbol, toCrypto.symbol, amount);
@@ -98,87 +113,99 @@ const SwapCard = () => {
 
   return (
     <div className="glass-card rounded-2xl p-6 w-full max-w-md mx-auto animate-fade-in">
-      <h2 className="text-xl font-semibold mb-6">Swap Cryptocurrencies</h2>
-      
-      <div className="space-y-4">
-        <CryptoInput
-          label="From"
-          crypto={fromCrypto}
-          amount={amount}
-          cryptos={cryptos}
-          onCryptoChange={setFromCrypto}
-          onAmountChange={(value) => {
-            setAmount(value);
-            validateAmount(value);
-          }}
-          isValid={isValidAmount}
-        />
-
-        <button 
-          onClick={() => {
-            const temp = fromCrypto;
-            setFromCrypto(toCrypto);
-            setToCrypto(temp);
-          }}
-          className="mx-auto block p-2 rounded-full hover:bg-white/5 transition-colors"
-        >
-          <ArrowDownUp className="text-accent" />
-        </button>
-
-        <CryptoInput
-          label="To"
-          crypto={toCrypto}
-          cryptos={cryptos}
-          onCryptoChange={setToCrypto}
-          readonly
-          estimatedAmount={estimatedAmount}
-        />
-
-        <PrivacySettings
-          stealthMode={stealthMode}
-          onStealthModeChange={setStealthMode}
-          mixerCount={mixerCount}
-          onMixerCountChange={setMixerCount}
-          privacyLevel={privacyLevel}
-        />
-
-        <FeeBreakdown
-          fees={fees}
-          cryptoSymbol={fromCrypto.symbol}
-        />
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Recipient Address</label>
-          <input
-            type="text"
-            value={address}
-            onChange={(e) => {
-              setAddress(e.target.value);
-              validateAddress(e.target.value);
-            }}
-            placeholder={`Enter ${toCrypto.name} Address`}
-            className={`w-full p-3 rounded-lg input-glass font-mono text-sm ${
-              !isValidAddress && address ? "border border-destructive" : ""
-            }`}
-          />
-          {!isValidAddress && address && (
-            <p className="text-xs text-destructive">Please enter a valid wallet address</p>
-          )}
-        </div>
-
-        <FeeTypeSelector
-          feeType={feeType}
-          onFeeTypeChange={setFeeType}
-        />
-
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Swap Cryptocurrencies</h2>
         <button
-          onClick={handleSwap}
-          disabled={!isValidAmount || !isValidAddress || !amount || !address}
-          className="w-full p-4 rounded-lg bg-accent text-accent-foreground font-medium hover-scale disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => setShowHistory(!showHistory)}
+          className="p-2 rounded-lg hover:bg-white/5 transition-colors"
         >
-          Swap Now
+          <History className="w-5 h-5" />
         </button>
       </div>
+
+      {showHistory ? (
+        <TransactionHistory transactions={transactions} />
+      ) : (
+        <div className="space-y-4">
+          <CryptoInput
+            label="From"
+            crypto={fromCrypto}
+            amount={amount}
+            cryptos={cryptos}
+            onCryptoChange={setFromCrypto}
+            onAmountChange={(value) => {
+              setAmount(value);
+              validateAmount(value);
+            }}
+            isValid={isValidAmount}
+          />
+
+          <button 
+            onClick={() => {
+              const temp = fromCrypto;
+              setFromCrypto(toCrypto);
+              setToCrypto(temp);
+            }}
+            className="mx-auto block p-2 rounded-full hover:bg-white/5 transition-colors"
+          >
+            <ArrowDownUp className="text-accent" />
+          </button>
+
+          <CryptoInput
+            label="To"
+            crypto={toCrypto}
+            cryptos={cryptos}
+            onCryptoChange={setToCrypto}
+            readonly
+            estimatedAmount={estimatedAmount}
+          />
+
+          <PrivacySettings
+            stealthMode={stealthMode}
+            onStealthModeChange={setStealthMode}
+            mixerCount={mixerCount}
+            onMixerCountChange={setMixerCount}
+            privacyLevel={privacyLevel}
+          />
+
+          <FeeBreakdown
+            fees={fees}
+            cryptoSymbol={fromCrypto.symbol}
+          />
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Recipient Address</label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                validateAddress(e.target.value);
+              }}
+              placeholder={`Enter ${toCrypto.name} Address`}
+              className={`w-full p-3 rounded-lg input-glass font-mono text-sm ${
+                !isValidAddress && address ? "border border-destructive" : ""
+              }`}
+            />
+            {!isValidAddress && address && (
+              <p className="text-xs text-destructive">Please enter a valid wallet address</p>
+            )}
+          </div>
+
+          <FeeTypeSelector
+            feeType={feeType}
+            onFeeTypeChange={setFeeType}
+          />
+
+          <button
+            onClick={handleSwap}
+            disabled={!isValidAmount || !isValidAddress || !amount || !address}
+            className="w-full p-4 rounded-lg bg-accent text-accent-foreground font-medium hover-scale disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Swap Now
+          </button>
+        </div>
+      )}
     </div>
   );
 };
