@@ -1,12 +1,17 @@
 
 import { Shield } from "lucide-react";
 import SwapCard from "@/components/SwapCard";
+import WalletConnect from "@/components/WalletConnect";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-secondary to-background py-12 px-4">
       <div className="container max-w-6xl mx-auto">
         {/* Header */}
+        <div className="flex justify-end mb-6">
+          <WalletConnect />
+        </div>
+        
         <div className="text-center mb-12 animate-fade-up">
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-accent/10 text-accent mb-4">
             <Shield className="w-4 h-4 mr-2" />
