@@ -1,25 +1,14 @@
-
 import React from "react";
 import { CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Transaction } from "@/types/crypto";
 
 export type TransactionStatus = "pending" | "completed" | "failed";
-
-export interface Transaction {
-  id: string;
-  fromCrypto: string;
-  toCrypto: string;
-  amount: string;
-  estimatedReceived: string;
-  status: TransactionStatus;
-  timestamp: Date;
-  address: string;
-}
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
 }
 
-const StatusIcon = ({ status }: { status: TransactionStatus }) => {
+const StatusIcon = ({ status }: { status: Transaction["status"] }) => {
   switch (status) {
     case "completed":
       return <CheckCircle className="w-4 h-4 text-green-500" />;

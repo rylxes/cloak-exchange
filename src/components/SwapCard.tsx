@@ -1,31 +1,28 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import { ArrowDownUp, History } from "lucide-react";
-import { BrowserProvider, Contract, parseUnits, formatUnits } from "ethers";
+import { BrowserProvider, Contract, parseUnits } from "ethers";
 import { generateStealthAddress, getPrivacyLevel } from "@/utils/privacyUtils";
 import { useToast } from "@/hooks/use-toast";
+import { useExchangeRates } from "@/hooks/useExchangeRates";
+import { Crypto, Transaction } from "@/types/crypto";
+import { 
+  cryptos,
+  ERC20_ABI,
+  calculateExchangeRate,
+  validateAmount,
+  validateAddress,
+  calculateFees 
+} from "@/utils/swapUtils";
 import CryptoInput from "./swap/CryptoInput";
 import PrivacySettings from "./swap/PrivacySettings";
 import FeeBreakdown from "./swap/FeeBreakdown";
 import FeeTypeSelector from "./swap/FeeTypeSelector";
-import TransactionHistory, { Transaction } from "./swap/TransactionHistory";
-
-const ERC20_ABI = [
-  "function approve(address spender, uint256 amount) public returns (bool)",
-  "function allowance(address owner, address spender) public view returns (uint256)",
-  "function balanceOf(address account) public view returns (uint256)",
-];
-
-const cryptos = [
-  { symbol: "BTC", name: "Bitcoin", decimals: 8, address: "0x..." },
-  { symbol: "ETH", name: "Ethereum", decimals: 18, address: "0x..." },
-  { symbol: "SOL", name: "Solana", decimals: 9, address: "0x..." },
-  { symbol: "XMR", name: "Monero", decimals: 12, address: "0x..." },
-  { symbol: "BNB", name: "Binance Coin", decimals: 18, address: "0x..." },
-];
+import TransactionHistory from "./swap/TransactionHistory";
 
 const SwapCard = () => {
-  const [fromCrypto, setFromCrypto] = useState(cryptos[0]);
-  const [toCrypto, setToCrypto] = useState(cryptos[1]);
+  const [fromCrypto, setFromCrypto] = useState<Crypto>(cryptos[0]);
+  const [toCrypto, setToCrypto] = useState<Crypto>(cryptos[1]);
   const [amount, setAmount] = useState("");
   const [address, setAddress] = useState("");
   const [feeType, setFeeType] = useState<"fixed" | "dynamic">("fixed");
@@ -35,41 +32,10 @@ const SwapCard = () => {
   const [mixerCount, setMixerCount] = useState(3);
   const [showHistory, setShowHistory] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   const [isApproving, setIsApproving] = useState(false);
+  
+  const exchangeRates = useExchangeRates();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchExchangeRates = async () => {
-      try {
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,monero,binancecoin&vs_currencies=usd');
-        const data = await response.json();
-        setExchangeRates({
-          BTC: data.bitcoin?.usd || 0,
-          ETH: data.ethereum?.usd || 0,
-          SOL: data.solana?.usd || 0,
-          XMR: data.monero?.usd || 0,
-          BNB: data.binancecoin?.usd || 0,
-        });
-      } catch (error) {
-        console.error('Failed to fetch exchange rates:', error);
-      }
-    };
-
-    fetchExchangeRates();
-    const interval = setInterval(fetchExchangeRates, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, []);
-
-  const calculateExchangeRate = (from: string, to: string, amount: string): string => {
-    if (!amount || isNaN(Number(amount))) return "0.00";
-    const fromRate = exchangeRates[from] || 0;
-    const toRate = exchangeRates[to] || 0;
-    if (fromRate && toRate) {
-      return ((Number(amount) * fromRate) / toRate).toFixed(6);
-    }
-    return "0.00";
-  };
 
   const checkAndApproveToken = async (tokenAddress: string, amount: string) => {
     if (!window.ethereum) {
@@ -89,7 +55,7 @@ const SwapCard = () => {
       
       const spenderAddress = "0x..." // Your DEX contract address
       const currentAllowance = await contract.allowance(await signer.getAddress(), spenderAddress);
-      const requiredAmount = parseUnits(amount, 18); // Adjust decimals based on token
+      const requiredAmount = parseUnits(amount, 18);
 
       if (currentAllowance < requiredAmount) {
         const tx = await contract.approve(spenderAddress, requiredAmount);
@@ -136,7 +102,13 @@ const SwapCard = () => {
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       
-      const exchangeAmount = calculateExchangeRate(fromCrypto.symbol, toCrypto.symbol, amount);
+      const exchangeAmount = calculateExchangeRate(
+        fromCrypto.symbol,
+        toCrypto.symbol,
+        amount,
+        exchangeRates
+      );
+
       const newTransaction: Transaction = {
         id: crypto.randomUUID(),
         fromCrypto: fromCrypto.symbol,
@@ -177,30 +149,15 @@ const SwapCard = () => {
     }
   };
 
-  const validateAmount = (value: string) => {
-    const numValue = Number(value);
-    const isValid = !isNaN(numValue) && numValue > 0 && numValue <= 100;
-    setIsValidAmount(isValid);
-    return isValid;
+  const handleAmountChange = (value: string) => {
+    setAmount(value);
+    setIsValidAmount(validateAmount(value));
   };
 
-  const validateAddress = (value: string) => {
-    const isValid = value.length >= 26 && value.length <= 42;
-    setIsValidAddress(isValid);
-    return isValid;
+  const handleAddressChange = (value: string) => {
+    setAddress(value);
+    setIsValidAddress(validateAddress(value));
   };
-
-  const calculateFees = () => {
-    if (!amount || isNaN(Number(amount))) return 0;
-    const baseAmount = Number(amount);
-    const baseFee = feeType === "fixed" ? baseAmount * 0.01 : baseAmount * 0.005;
-    const privacyFee = stealthMode ? baseFee * (mixerCount * 0.001) : 0;
-    return baseFee + privacyFee;
-  };
-
-  const estimatedAmount = calculateExchangeRate(fromCrypto.symbol, toCrypto.symbol, amount);
-  const fees = calculateFees();
-  const privacyLevel = amount ? getPrivacyLevel(Number(amount)) : 'low';
 
   return (
     <div className="glass-card rounded-2xl p-6 w-full max-w-md mx-auto animate-fade-in">
@@ -224,10 +181,7 @@ const SwapCard = () => {
             amount={amount}
             cryptos={cryptos}
             onCryptoChange={setFromCrypto}
-            onAmountChange={(value) => {
-              setAmount(value);
-              validateAmount(value);
-            }}
+            onAmountChange={handleAmountChange}
             isValid={isValidAmount}
           />
 
@@ -248,7 +202,12 @@ const SwapCard = () => {
             cryptos={cryptos}
             onCryptoChange={setToCrypto}
             readonly
-            estimatedAmount={calculateExchangeRate(fromCrypto.symbol, toCrypto.symbol, amount)}
+            estimatedAmount={calculateExchangeRate(
+              fromCrypto.symbol,
+              toCrypto.symbol,
+              amount,
+              exchangeRates
+            )}
           />
 
           <PrivacySettings
@@ -256,11 +215,11 @@ const SwapCard = () => {
             onStealthModeChange={setStealthMode}
             mixerCount={mixerCount}
             onMixerCountChange={setMixerCount}
-            privacyLevel={privacyLevel}
+            privacyLevel={getPrivacyLevel(Number(amount))}
           />
 
           <FeeBreakdown
-            fees={fees}
+            fees={calculateFees(amount, feeType, stealthMode, mixerCount)}
             cryptoSymbol={fromCrypto.symbol}
           />
 
@@ -269,10 +228,7 @@ const SwapCard = () => {
             <input
               type="text"
               value={address}
-              onChange={(e) => {
-                setAddress(e.target.value);
-                validateAddress(e.target.value);
-              }}
+              onChange={(e) => handleAddressChange(e.target.value)}
               placeholder={`Enter ${toCrypto.name} Address`}
               className={`w-full p-3 rounded-lg input-glass font-mono text-sm ${
                 !isValidAddress && address ? "border border-destructive" : ""

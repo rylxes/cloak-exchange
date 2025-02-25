@@ -1,13 +1,14 @@
 
 import React from "react";
 import CryptoIcon from "../CryptoIcon";
+import { Crypto } from "@/types/crypto";
 
 interface CryptoInputProps {
   label: string;
-  crypto: { symbol: string; name: string };
+  crypto: Crypto;
   amount?: string;
-  cryptos: Array<{ symbol: string; name: string }>;
-  onCryptoChange: (crypto: { symbol: string; name: string }) => void;
+  cryptos: Crypto[];
+  onCryptoChange: (crypto: Crypto) => void;
   onAmountChange?: (amount: string) => void;
   isValid?: boolean;
   readonly?: boolean;
