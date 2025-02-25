@@ -17,21 +17,76 @@ const WalletConnect = () => {
   const [signer, setSigner] = useState<JsonRpcSigner | null>(null);
   const [network, setNetwork] = useState<Network | null>(null);
   const [isWrongNetwork, setIsWrongNetwork] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const { toast } = useToast();
 
+  const detectWallet = (): 'metamask' | 'other' | null => {
+    if (typeof window === 'undefined') return null;
+    
+    // Check if MetaMask is installed
+    if (window.ethereum?.isMetaMask) {
+      return 'metamask';
+    }
+    
+    // Check if any other web3 wallet is available
+    if (window.ethereum) {
+      return 'other';
+    }
+    
+    return null;
+  };
+
   const connectWallet = async () => {
+    if (isConnecting) return;
+    setIsConnecting(true);
+
     try {
-      if (!window.ethereum) {
+      const walletType = detectWallet();
+      
+      if (!walletType) {
         toast({
-          title: "MetaMask not found",
-          description: "Please install MetaMask browser extension",
+          title: "No Wallet Detected",
+          description: (
+            <div className="flex flex-col gap-2">
+              <p>Please install MetaMask or another Web3 wallet to continue.</p>
+              <a 
+                href="https://metamask.io/download/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                Install MetaMask
+              </a>
+            </div>
+          ),
           variant: "destructive",
         });
         return;
       }
 
+      if (!window.ethereum) {
+        toast({
+          title: "Connection Error",
+          description: "Please refresh the page and try again",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Clear any previous connection state
+      setAddress("");
+      setSigner(null);
+      setNetwork(null);
+
       const provider = new BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
+      
+      // Request account access
+      const accounts = await provider.send("eth_requestAccounts", []);
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts returned from wallet");
+      }
+
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
       const network = await provider.getNetwork();
@@ -48,13 +103,24 @@ const WalletConnect = () => {
         title: "Wallet Connected",
         description: `Connected to ${SUPPORTED_NETWORKS[chainId as keyof typeof SUPPORTED_NETWORKS] || network.name}`,
       });
-    } catch (error) {
-      console.error("Error connecting wallet:", error);
+    } catch (error: any) {
+      console.error("Wallet connection error:", error);
+      
+      let errorMessage = "Failed to connect wallet. Please try again.";
+      
+      if (error.code === -32002) {
+        errorMessage = "Connection request already pending. Please check your wallet!";
+      } else if (error.code === 4001) {
+        errorMessage = "Connection rejected. Please try again and approve the connection.";
+      }
+      
       toast({
         title: "Connection Failed",
-        description: "Failed to connect wallet. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -105,7 +171,7 @@ const WalletConnect = () => {
             });
           });
         }
-      });
+      }).catch(console.error);
 
       // Listen for network changes
       window.ethereum.on("chainChanged", () => {
@@ -120,14 +186,14 @@ const WalletConnect = () => {
           window.location.reload();
         }
       });
-    }
 
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener("chainChanged", () => {});
-        window.ethereum.removeListener("accountsChanged", () => {});
-      }
-    };
+      return () => {
+        if (window.ethereum) {
+          window.ethereum.removeListener("chainChanged", () => {});
+          window.ethereum.removeListener("accountsChanged", () => {});
+        }
+      };
+    }
   }, []);
 
   if (address && isWrongNetwork) {
@@ -166,10 +232,11 @@ const WalletConnect = () => {
   return (
     <button
       onClick={connectWallet}
-      className="glass-card px-4 py-2 rounded-full flex items-center gap-2 hover:bg-white/10 transition-colors"
+      disabled={isConnecting}
+      className="glass-card px-4 py-2 rounded-full flex items-center gap-2 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <Wallet className="w-4 h-4" />
-      <span>Connect Wallet</span>
+      <span>{isConnecting ? "Connecting..." : "Connect Wallet"}</span>
     </button>
   );
 };
