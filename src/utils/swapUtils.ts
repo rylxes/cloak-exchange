@@ -1,12 +1,51 @@
-
 import { Crypto } from "@/types/crypto";
 
 export const cryptos: Crypto[] = [
-  { symbol: "BTC", name: "Bitcoin", decimals: 8, address: "0x..." },
-  { symbol: "ETH", name: "Ethereum", decimals: 18, address: "0x..." },
-  { symbol: "SOL", name: "Solana", decimals: 9, address: "0x..." },
-  { symbol: "XMR", name: "Monero", decimals: 12, address: "0x..." },
-  { symbol: "BNB", name: "Binance Coin", decimals: 18, address: "0x..." },
+  { 
+    symbol: "ETH", 
+    name: "Ethereum", 
+    decimals: 18, 
+    address: "0x0000000000000000000000000000000000000000",
+    chainId: 1,
+    isNative: true
+  },
+  { 
+    symbol: "MATIC", 
+    name: "Polygon", 
+    decimals: 18, 
+    address: "0x0000000000000000000000000000000000000000",
+    chainId: 137,
+    isNative: true
+  },
+  { 
+    symbol: "BNB", 
+    name: "Binance Coin", 
+    decimals: 18, 
+    address: "0x0000000000000000000000000000000000000000",
+    chainId: 56,
+    isNative: true
+  },
+  { 
+    symbol: "WETH", 
+    name: "Wrapped Ethereum", 
+    decimals: 18, 
+    address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    chainId: 1
+  },
+  { 
+    symbol: "WMATIC", 
+    name: "Wrapped MATIC", 
+    decimals: 18, 
+    address: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    chainId: 137
+  },
+  { 
+    symbol: "WBNB", 
+    name: "Wrapped BNB", 
+    decimals: 18, 
+    address: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+    chainId: 56
+  }
 ];
 
 export const ERC20_ABI = [

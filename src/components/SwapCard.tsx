@@ -1,11 +1,11 @@
-
 import React, { useState } from "react";
 import { ArrowDownUp, History } from "lucide-react";
 import { BrowserProvider, Contract, parseUnits } from "ethers";
 import { generateStealthAddress, getPrivacyLevel } from "@/utils/privacyUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
-import { Crypto, Transaction } from "@/types/crypto";
+import { Crypto, Transaction, SwapSettings } from "@/types/crypto";
+import { networks, supportsCrossChain } from "@/config/networks";
 import { 
   cryptos,
   ERC20_ABI,
@@ -19,6 +19,7 @@ import PrivacySettings from "./swap/PrivacySettings";
 import FeeBreakdown from "./swap/FeeBreakdown";
 import FeeTypeSelector from "./swap/FeeTypeSelector";
 import TransactionHistory from "./swap/TransactionHistory";
+import AdvancedSettings from "./swap/AdvancedSettings";
 
 const SwapCard = () => {
   const [fromCrypto, setFromCrypto] = useState<Crypto>(cryptos[0]);
@@ -33,7 +34,13 @@ const SwapCard = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isApproving, setIsApproving] = useState(false);
-  
+  const [swapSettings, setSwapSettings] = useState<SwapSettings>({
+    slippageTolerance: 0.5,
+    gasSpeed: "standard",
+    customRoute: false,
+    bridgePreference: "native",
+  });
+
   const exchangeRates = useExchangeRates();
   const { toast } = useToast();
 
@@ -81,6 +88,41 @@ const SwapCard = () => {
     }
   };
 
+  const handleNetworkChange = async (chainId: number) => {
+    if (!window.ethereum) return;
+    
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: `0x${chainId.toString(16)}` }],
+      });
+    } catch (error: any) {
+      if (error.code === 4902) {
+        const network = networks.find(n => n.chainId === chainId);
+        if (!network) return;
+        
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: `0x${chainId.toString(16)}`,
+              chainName: network.name,
+              nativeCurrency: network.nativeCurrency,
+              rpcUrls: [network.rpcUrl],
+              blockExplorerUrls: [network.explorerUrl],
+            },
+          ],
+        });
+      }
+    }
+  };
+
+  const isCrossChainSwap = () => {
+    const fromChainId = fromCrypto.chainId;
+    const toChainId = toCrypto.chainId;
+    return fromChainId && toChainId && fromChainId !== toChainId;
+  };
+
   const handleSwap = async () => {
     if (!validateAmount(amount) || !validateAddress(address)) {
       return;
@@ -96,6 +138,10 @@ const SwapCard = () => {
     }
 
     try {
+      if (fromCrypto.chainId) {
+        await handleNetworkChange(fromCrypto.chainId);
+      }
+
       const isApproved = await checkAndApproveToken(fromCrypto.address, amount);
       if (!isApproved) return;
 
@@ -109,6 +155,8 @@ const SwapCard = () => {
         exchangeRates
       );
 
+      const minReceived = Number(exchangeAmount) * (1 - swapSettings.slippageTolerance / 100);
+
       const newTransaction: Transaction = {
         id: crypto.randomUUID(),
         fromCrypto: fromCrypto.symbol,
@@ -118,9 +166,18 @@ const SwapCard = () => {
         status: "pending",
         timestamp: new Date(),
         address: stealthMode ? generateStealthAddress(address) : address,
+        fromChainId: fromCrypto.chainId,
+        toChainId: toCrypto.chainId,
       };
 
       setTransactions(prev => [newTransaction, ...prev]);
+
+      if (isCrossChainSwap()) {
+        toast({
+          title: "Cross-Chain Swap Initiated",
+          description: `Bridging ${amount} ${fromCrypto.symbol} to ${toCrypto.symbol} network`,
+        });
+      }
 
       setTimeout(() => {
         setTransactions(prev => 
@@ -163,12 +220,18 @@ const SwapCard = () => {
     <div className="glass-card rounded-2xl p-6 w-full max-w-md mx-auto animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Swap Cryptocurrencies</h2>
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="p-2 rounded-lg hover:bg-white/5 transition-colors"
-        >
-          <History className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <AdvancedSettings
+            settings={swapSettings}
+            onSettingsChange={setSwapSettings}
+          />
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+          >
+            <History className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {showHistory ? (
