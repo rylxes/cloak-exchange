@@ -27,7 +27,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 }
 
@@ -36,7 +36,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased selection:bg-white/10;
     font-family: 'Inter', sans-serif;
   }
   .font-mono {
@@ -45,11 +45,11 @@
 }
 
 .glass-card {
-  @apply bg-card/80 backdrop-blur-md border border-white/10 shadow-lg;
+  @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-xl;
 }
 
 .input-glass {
-  @apply bg-white/5 border border-white/10 backdrop-blur-sm transition-all duration-200 focus:bg-white/10;
+  @apply bg-white/5 border border-white/10 backdrop-blur-sm transition-all duration-200 focus:bg-white/10 !outline-none;
 }
 
 .hover-scale {
@@ -69,4 +69,35 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Input number arrows removal */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
 }
