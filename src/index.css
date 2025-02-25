@@ -20,8 +20,8 @@
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 142.1 76.2% 36.3%;
+    --accent-foreground: 355.7 100% 97.3%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
@@ -36,7 +36,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased selection:bg-white/10;
+    @apply bg-background text-foreground font-sans antialiased selection:bg-gray-100;
     font-family: 'Inter', sans-serif;
   }
   .font-mono {
@@ -45,11 +45,11 @@
 }
 
 .glass-card {
-  @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-xl;
+  @apply bg-white/80 backdrop-blur-md border border-black/5 shadow-sm;
 }
 
 .input-glass {
-  @apply bg-white/5 border border-white/10 backdrop-blur-sm transition-all duration-200 focus:bg-white/10 !outline-none;
+  @apply bg-white/80 border border-black/10 backdrop-blur-sm transition-all duration-200 focus:bg-white/90 !outline-none;
 }
 
 .hover-scale {
@@ -78,17 +78,17 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.15);
 }
 
 /* Input number arrows removal */

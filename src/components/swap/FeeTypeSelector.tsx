@@ -14,7 +14,7 @@ const FeeTypeSelector = ({ feeType, onFeeTypeChange }: FeeTypeSelectorProps) => 
         className={`flex-1 p-4 rounded-lg transition-all duration-200 ${
           feeType === "fixed" 
             ? "bg-accent text-accent-foreground shadow-lg shadow-accent/25" 
-            : "bg-white/5 hover:bg-white/10 text-white/80"
+            : "bg-gray-50 hover:bg-gray-100 text-gray-800 border border-black/5"
         }`}
       >
         <div className="text-sm font-medium mb-1">Fixed Rate</div>
@@ -25,7 +25,7 @@ const FeeTypeSelector = ({ feeType, onFeeTypeChange }: FeeTypeSelectorProps) => 
         className={`flex-1 p-4 rounded-lg transition-all duration-200 ${
           feeType === "dynamic" 
             ? "bg-accent text-accent-foreground shadow-lg shadow-accent/25" 
-            : "bg-white/5 hover:bg-white/10 text-white/80"
+            : "bg-gray-50 hover:bg-gray-100 text-gray-800 border border-black/5"
         }`}
       >
         <div className="text-sm font-medium mb-1">Dynamic Rate</div>
