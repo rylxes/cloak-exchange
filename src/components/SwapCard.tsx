@@ -1,7 +1,8 @@
-
 import React, { useState } from "react";
 import CryptoIcon from "./CryptoIcon";
-import { ArrowDownUp } from "lucide-react";
+import { ArrowDownUp, Shield, Eye, EyeOff } from "lucide-react";
+import { generateStealthAddress, getPrivacyLevel, getSuggestedMixers } from "@/utils/privacyUtils";
+import { useToast } from "@/hooks/use-toast";
 
 const cryptos = [
   { symbol: "BTC", name: "Bitcoin" },
@@ -11,7 +12,6 @@ const cryptos = [
   { symbol: "BNB", name: "Binance Coin" },
 ];
 
-// Mock exchange rates (in a real app, these would come from an API)
 const mockExchangeRates: Record<string, Record<string, number>> = {
   BTC: { ETH: 13.5, SOL: 1150, XMR: 185, BNB: 98 },
   ETH: { BTC: 0.074, SOL: 85, XMR: 13.7, BNB: 7.25 },
@@ -28,6 +28,9 @@ const SwapCard = () => {
   const [feeType, setFeeType] = useState<"fixed" | "dynamic">("fixed");
   const [isValidAmount, setIsValidAmount] = useState(true);
   const [isValidAddress, setIsValidAddress] = useState(true);
+  const [stealthMode, setStealthMode] = useState(false);
+  const [mixerCount, setMixerCount] = useState(3);
+  const { toast } = useToast();
 
   const calculateExchangeRate = (from: string, to: string, amount: string): string => {
     if (!amount || isNaN(Number(amount))) return "0.00";
@@ -52,7 +55,9 @@ const SwapCard = () => {
   const calculateFees = () => {
     if (!amount || isNaN(Number(amount))) return 0;
     const baseAmount = Number(amount);
-    return feeType === "fixed" ? baseAmount * 0.01 : baseAmount * 0.005;
+    const baseFee = feeType === "fixed" ? baseAmount * 0.01 : baseAmount * 0.005;
+    const privacyFee = stealthMode ? baseFee * (mixerCount * 0.001) : 0;
+    return baseFee + privacyFee;
   };
 
   const handleSwap = () => {
@@ -62,6 +67,8 @@ const SwapCard = () => {
 
     const exchangeAmount = calculateExchangeRate(fromCrypto.symbol, toCrypto.symbol, amount);
     const fees = calculateFees();
+    const finalAddress = stealthMode ? generateStealthAddress(address) : address;
+    const privacyLevel = getPrivacyLevel(Number(amount));
 
     console.log("Swapping:", {
       from: fromCrypto.symbol,
@@ -69,13 +76,22 @@ const SwapCard = () => {
       amount,
       exchangeAmount,
       fees,
-      address,
+      address: finalAddress,
       feeType,
+      stealthMode,
+      mixerCount,
+      privacyLevel,
+    });
+
+    toast({
+      title: "Swap Initiated",
+      description: `Transaction will be routed through ${mixerCount} mixer${mixerCount > 1 ? 's' : ''} for enhanced privacy.`,
     });
   };
 
   const estimatedAmount = calculateExchangeRate(fromCrypto.symbol, toCrypto.symbol, amount);
   const fees = calculateFees();
+  const privacyLevel = amount ? getPrivacyLevel(Number(amount)) : 'low';
 
   return (
     <div className="glass-card rounded-2xl p-6 w-full max-w-md mx-auto animate-fade-in">
@@ -145,6 +161,51 @@ const SwapCard = () => {
           </select>
           <span className="font-mono text-muted-foreground">≈ {estimatedAmount}</span>
         </div>
+      </div>
+
+      {/* Privacy Settings */}
+      <div className="space-y-2 mb-6 p-3 rounded-lg bg-white/5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-accent" />
+            <span className="font-medium">Privacy Mode</span>
+          </div>
+          <button
+            onClick={() => setStealthMode(!stealthMode)}
+            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+          >
+            {stealthMode ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+          </button>
+        </div>
+        
+        {stealthMode && (
+          <>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Privacy Level</span>
+              <span className={`font-medium ${
+                privacyLevel === 'high' ? 'text-green-500' :
+                privacyLevel === 'medium' ? 'text-yellow-500' :
+                'text-red-500'
+              }`}>
+                {privacyLevel.charAt(0).toUpperCase() + privacyLevel.slice(1)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Mixer Count</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setMixerCount(Math.max(1, mixerCount - 1))}
+                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
+                >-</button>
+                <span className="w-8 text-center">{mixerCount}</span>
+                <button
+                  onClick={() => setMixerCount(Math.min(10, mixerCount + 1))}
+                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
+                >+</button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Fee Breakdown */}
