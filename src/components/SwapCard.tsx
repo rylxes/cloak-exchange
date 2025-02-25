@@ -6,8 +6,19 @@ import { ArrowDownUp } from "lucide-react";
 const cryptos = [
   { symbol: "BTC", name: "Bitcoin" },
   { symbol: "ETH", name: "Ethereum" },
-  // Add other cryptocurrencies
+  { symbol: "SOL", name: "Solana" },
+  { symbol: "XMR", name: "Monero" },
+  { symbol: "BNB", name: "Binance Coin" },
 ];
+
+// Mock exchange rates (in a real app, these would come from an API)
+const mockExchangeRates: Record<string, Record<string, number>> = {
+  BTC: { ETH: 13.5, SOL: 1150, XMR: 185, BNB: 98 },
+  ETH: { BTC: 0.074, SOL: 85, XMR: 13.7, BNB: 7.25 },
+  SOL: { BTC: 0.00087, ETH: 0.0118, XMR: 0.161, BNB: 0.085 },
+  XMR: { BTC: 0.0054, ETH: 0.073, SOL: 6.21, BNB: 0.53 },
+  BNB: { BTC: 0.0102, ETH: 0.138, SOL: 11.76, XMR: 1.89 },
+};
 
 const SwapCard = () => {
   const [fromCrypto, setFromCrypto] = useState(cryptos[0]);
@@ -15,11 +26,56 @@ const SwapCard = () => {
   const [amount, setAmount] = useState("");
   const [address, setAddress] = useState("");
   const [feeType, setFeeType] = useState<"fixed" | "dynamic">("fixed");
+  const [isValidAmount, setIsValidAmount] = useState(true);
+  const [isValidAddress, setIsValidAddress] = useState(true);
+
+  const calculateExchangeRate = (from: string, to: string, amount: string): string => {
+    if (!amount || isNaN(Number(amount))) return "0.00";
+    const rate = mockExchangeRates[from][to] || 1/mockExchangeRates[to][from];
+    return (Number(amount) * rate).toFixed(6);
+  };
+
+  const validateAmount = (value: string) => {
+    const numValue = Number(value);
+    const isValid = !isNaN(numValue) && numValue > 0 && numValue <= 100; // Example max limit
+    setIsValidAmount(isValid);
+    return isValid;
+  };
+
+  const validateAddress = (value: string) => {
+    // Basic validation - in a real app, this would be more sophisticated
+    const isValid = value.length >= 26 && value.length <= 42;
+    setIsValidAddress(isValid);
+    return isValid;
+  };
+
+  const calculateFees = () => {
+    if (!amount || isNaN(Number(amount))) return 0;
+    const baseAmount = Number(amount);
+    return feeType === "fixed" ? baseAmount * 0.01 : baseAmount * 0.005;
+  };
 
   const handleSwap = () => {
-    // Implement swap logic
-    console.log("Swapping:", { fromCrypto, toCrypto, amount, address, feeType });
+    if (!validateAmount(amount) || !validateAddress(address)) {
+      return;
+    }
+
+    const exchangeAmount = calculateExchangeRate(fromCrypto.symbol, toCrypto.symbol, amount);
+    const fees = calculateFees();
+
+    console.log("Swapping:", {
+      from: fromCrypto.symbol,
+      to: toCrypto.symbol,
+      amount,
+      exchangeAmount,
+      fees,
+      address,
+      feeType,
+    });
   };
+
+  const estimatedAmount = calculateExchangeRate(fromCrypto.symbol, toCrypto.symbol, amount);
+  const fees = calculateFees();
 
   return (
     <div className="glass-card rounded-2xl p-6 w-full max-w-md mx-auto animate-fade-in">
@@ -44,11 +100,19 @@ const SwapCard = () => {
           <input
             type="number"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              validateAmount(e.target.value);
+            }}
             placeholder="0.00"
-            className="bg-transparent text-right outline-none font-mono"
+            className={`bg-transparent text-right outline-none font-mono ${
+              !isValidAmount && amount ? "text-destructive" : ""
+            }`}
           />
         </div>
+        {!isValidAmount && amount && (
+          <p className="text-xs text-destructive">Please enter a valid amount (0-100)</p>
+        )}
       </div>
 
       {/* Swap Direction Button */}
@@ -79,7 +143,23 @@ const SwapCard = () => {
               </option>
             ))}
           </select>
-          <span className="font-mono text-muted-foreground">≈ 0.00</span>
+          <span className="font-mono text-muted-foreground">≈ {estimatedAmount}</span>
+        </div>
+      </div>
+
+      {/* Fee Breakdown */}
+      <div className="space-y-2 mb-6 p-3 rounded-lg bg-white/5">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Network Fee</span>
+          <span className="font-mono">{(fees * 0.7).toFixed(6)} {fromCrypto.symbol}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Service Fee</span>
+          <span className="font-mono">{(fees * 0.3).toFixed(6)} {fromCrypto.symbol}</span>
+        </div>
+        <div className="flex justify-between text-sm font-medium pt-2 border-t border-white/10">
+          <span>Total Fee</span>
+          <span className="font-mono">{fees.toFixed(6)} {fromCrypto.symbol}</span>
         </div>
       </div>
 
@@ -89,10 +169,18 @@ const SwapCard = () => {
         <input
           type="text"
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={(e) => {
+            setAddress(e.target.value);
+            validateAddress(e.target.value);
+          }}
           placeholder={`Enter ${toCrypto.name} Address`}
-          className="w-full p-3 rounded-lg input-glass font-mono text-sm"
+          className={`w-full p-3 rounded-lg input-glass font-mono text-sm ${
+            !isValidAddress && address ? "border border-destructive" : ""
+          }`}
         />
+        {!isValidAddress && address && (
+          <p className="text-xs text-destructive">Please enter a valid wallet address</p>
+        )}
       </div>
 
       {/* Fee Type Selection */}
@@ -122,7 +210,8 @@ const SwapCard = () => {
       {/* Swap Button */}
       <button
         onClick={handleSwap}
-        className="w-full p-4 rounded-lg bg-accent text-accent-foreground font-medium hover-scale"
+        disabled={!isValidAmount || !isValidAddress || !amount || !address}
+        className="w-full p-4 rounded-lg bg-accent text-accent-foreground font-medium hover-scale disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Swap Now
       </button>
