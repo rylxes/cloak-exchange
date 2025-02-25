@@ -1,5 +1,5 @@
 
-import { Bitcoin, Ethereum } from "lucide-react";
+import { Bitcoin, CircleDollarSign } from "lucide-react";
 import React from "react";
 
 type CryptoIconProps = {
@@ -12,7 +12,7 @@ const CryptoIcon: React.FC<CryptoIconProps> = ({ symbol, size = 24 }) => {
     case "btc":
       return <Bitcoin size={size} className="text-[#F7931A]" />;
     case "eth":
-      return <Ethereum size={size} className="text-[#627EEA]" />;
+      return <CircleDollarSign size={size} className="text-[#627EEA]" />;
     // Add other crypto icons as needed
     default:
       return <div className="w-6 h-6 rounded-full bg-gray-200" />;
